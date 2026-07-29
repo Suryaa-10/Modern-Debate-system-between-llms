@@ -1,0 +1,4 @@
+final_answer,consensus_type,agreement_score,confidence_average,query
+,Majority,0.6666666666666666,0.3333333333333333,What is the capital of France?
+,Majority,0.6666666666666666,0.3333333333333333,What is the capital of France?
+paris,Majority,0.6666666666666666,0.6633333333333333,What is the capital of France?
