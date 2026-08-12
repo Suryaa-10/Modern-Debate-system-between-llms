@@ -410,12 +410,12 @@ The framework includes built-in loaders for six distinct benchmark dataset categ
 
 | Dataset Name | Primary Source Directory | Sample Count (Test Suite) | Question Type | Ground Truth Format | Target Extraction Method |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Grade School Math (GSM8K)** | `Dataset/grade-school-math/` | 3 - 5 samples | Multi-step Math Reasoning | Numeric string (e.g., `18`) | Regex CoT (`####`, `\boxed{}`) |
-| **MMLU** | `Dataset/mmlu/` | 3 samples | Multiple Choice (4 choices) | Choice Letter (`A`, `B`, `C`, `D`) | Regex Letter Extractor |
-| **Arithmetic** | Synthetic Benchmark Suite | 3 samples | Multi-op calculations & percentages | Numeric float/int (`227`, `61.6`) | Math Tolerance (`isclose`) |
-| **Biographies** | Synthetic Benchmark Suite | 3 samples | Factual History & Entity QA | Entity name or Year (`1903`) | Normalized Text Matching |
-| **Chess Move Validity** | Synthetic Benchmark Suite | 3 samples | Standard Chess Rule Logic | Binary string (`Yes`, `No`) | Text Normalization |
-| **Chess Move Optimality**| Synthetic Benchmark Suite | 2 samples | Tactical Chess Evaluation | Key piece / Outcome (`Queen`, `Yes`) | Text Normalization |
+| **Grade School Math (GSM8K)** | `Dataset/grade-school-math/` | 25 samples | Multi-step Math Reasoning | Numeric string (e.g., `18`) | Regex CoT (`####`, `\boxed{}`) |
+| **MMLU** | `Dataset/mmlu/` | 30 samples | Multiple Choice (4 choices) | Choice Letter (`A`, `B`, `C`, `D`) | Regex Letter Extractor |
+| **Arithmetic** | Synthetic Benchmark Suite | 20 samples | Multi-op calculations & percentages | Numeric float/int (`227`, `61.6`) | Math Tolerance (`isclose`) |
+| **Biographies** | Synthetic Benchmark Suite | 20 samples | Factual History & Entity QA | Entity name or Year (`1903`) | Normalized Text Matching |
+| **Chess Move Validity** | Synthetic Benchmark Suite | 20 samples | Standard Chess Rule Logic | Binary string (`Yes`, `No`) | Text Normalization |
+| **Chess Move Optimality**| Synthetic Benchmark Suite | 20 samples | Tactical Chess Evaluation | Key piece / Outcome (`Queen`, `Yes`) | Text Normalization |
 
 ### How Users Can Obtain / Extend Datasets
 * **GSM8K**: Included in `Dataset/grade-school-math/grade_school_math/data/test.jsonl`.
