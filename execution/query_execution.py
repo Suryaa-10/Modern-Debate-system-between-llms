@@ -16,23 +16,24 @@ class ExecutionController:
         
     async def run_full_debate(self, query: str, max_rounds: int = 7) -> Dict[str, Any]:
         """
-        Executes a full multi-round debate followed by consensus.
+        Executes a multi-round debate followed by consensus with dynamic early exit routing.
         """
         state = DebateState(query=query, max_rounds=max_rounds)
         
         # Round 1: Initial Arguments
         await self.engine.run_initial_arguments(state)
         
-        # Subsequent Rounds: Critiques
+        # Subsequent Rounds: Critiques (unless early exit triggered)
         while not state.is_completed and state.round_number < max_rounds:
             await self.engine.run_critique_round(state)
             
-        # Final Phase: Consensus
+        # Final Phase: Consensus Evaluation
         final_result = await self.consensus.evaluate_and_conclude(state)
         
         return {
             "query": query,
             "rounds_completed": state.round_number,
+            "early_exit": state.early_exit,
             "history": state.history,
             "final_consensus": final_result
         }
@@ -46,6 +47,7 @@ async def execute_query(query: str, output_file: Optional[str] = None):
         result = await controller.run_full_debate(query)
         print("\n=== FINAL DEBATE RESULTS ===")
         print(json.dumps(result["final_consensus"], indent=2))
+        print(f"Rounds Completed: {result['rounds_completed']} | Early Exit: {result['early_exit']}")
         
         if output_file:
             with open(output_file, 'w') as f:

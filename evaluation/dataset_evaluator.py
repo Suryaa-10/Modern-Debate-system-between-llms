@@ -191,8 +191,8 @@ class DatasetLoader:
                 "type": "arithmetic"
             },
             {
-                "question": "Calculate: (45 + 55) * 12 - 250",
-                "target": "950",
+                "question": "A store owner bought an item for $50, marked it up by 40%, then offered a 20% discount on marked price, and added 10% tax on discounted price. What is the final price paid?",
+                "target": "61.6",
                 "dataset": "Arithmetic",
                 "type": "arithmetic"
             },
@@ -204,21 +204,21 @@ class DatasetLoader:
             }
         ]
         
-        # 5. Grade School Math (GSM8K)
+        # 5. Grade School Math (GSM8K & Logic Traps)
         gsm_samples = DatasetLoader.get_gsm8k_samples(limit=3)
         if gsm_samples:
             suite["Grade School Math"] = gsm_samples
         else:
             suite["Grade School Math"] = [
                 {
-                    "question": "Janet's ducks lay 16 eggs per day. She eats three for breakfast every morning and bakes muffins with four. She sells the rest for $2 each. How much does she make daily?",
-                    "target": "18",
+                    "question": "If 5 machines take 5 minutes to make 5 widgets, how many minutes does it take 100 machines to make 100 widgets?",
+                    "target": "5",
                     "dataset": "Grade School Math",
                     "type": "math"
                 },
                 {
-                    "question": "James runs 3 sprints 3 times a week. Each sprint is 60 meters. How many total meters does he run in a week?",
-                    "target": "540",
+                    "question": "Train A leaves station at 60 mph. 2 hours later, Train B leaves same station at 90 mph. How many miles from station will Train B catch Train A?",
+                    "target": "360",
                     "dataset": "Grade School Math",
                     "type": "math"
                 }
@@ -279,45 +279,74 @@ class BenchmarkEvaluator:
             return False, f"Error: {e}"
 
     async def evaluate_multiagent_majority(self, sample: Dict[str, Any]) -> Tuple[bool, str]:
-        """Majority voting among 3 independent agents."""
+        """Confidence-weighted majority voting among 3 independent agents."""
         prompt = f"Solve the following question concisely and state your final answer:\n{sample['question']}"
         agents = ["agent_1", "agent_2", "agent_3"]
         
         async def fetch(agent):
             try:
-                return await self.manager.generate_response(agent, [{"role": "user", "content": prompt}])
+                from schemas.response_schema import ArgumentSchema
+                resp_json = await self.manager.generate_response(
+                    agent, 
+                    [{"role": "user", "content": prompt}],
+                    response_schema=ArgumentSchema.model_json_schema()
+                )
+                data = json.loads(resp_json)
+                return data.get("final_answer", ""), float(data.get("confidence_score", 0.8))
             except Exception:
-                return ""
+                try:
+                    raw = await self.manager.generate_response(agent, [{"role": "user", "content": prompt}])
+                    return raw, 0.5
+                except Exception:
+                    return "", 0.0
 
-        responses = await asyncio.gather(*[fetch(a) for a in agents])
+        results = await asyncio.gather(*[fetch(a) for a in agents])
         
-        extracted = []
-        for r in responses:
-            if sample['type'] in ["math", "arithmetic"]:
-                extracted.append(AnswerExtractor.extract_numeric(r))
-            elif sample['type'] in ["mmlu", "multiple_choice"]:
-                extracted.append(AnswerExtractor.extract_option(r))
-            else:
-                extracted.append(r.strip())
-
-        # Simple majority vote among valid extractions
+        # Aggregate confidence-weighted votes
+        weights = {}
+        conf_sums = {}
         counts = {}
-        for item in extracted:
-            if item:
-                counts[item] = counts.get(item, 0) + 1
-        
-        best_ans = max(counts, key=counts.get) if counts else (responses[0] if responses else "")
+        for raw_ans, conf in results:
+            if not raw_ans:
+                continue
+            if sample['type'] in ["math", "arithmetic"]:
+                extracted = AnswerExtractor.extract_numeric(raw_ans)
+            elif sample['type'] in ["mmlu", "multiple_choice"]:
+                extracted = AnswerExtractor.extract_option(raw_ans)
+            else:
+                extracted = raw_ans.strip()
+
+            if extracted:
+                weights[extracted] = weights.get(extracted, 0.0) + conf
+                conf_sums[extracted] = conf_sums.get(extracted, 0.0) + conf
+                counts[extracted] = counts.get(extracted, 0) + 1
+
+        if weights:
+            # Sort by total weight, then by average confidence
+            best_ans = max(weights.keys(), key=lambda k: (weights[k], conf_sums[k] / counts[k]))
+        else:
+            best_ans = ""
+
         is_correct = AnswerExtractor.is_correct(best_ans, sample['target'], sample['type'])
         return is_correct, str(best_ans)
 
     async def evaluate_multiagent_debate(self, sample: Dict[str, Any], max_rounds: int = 2) -> Tuple[bool, str]:
-        """Multi-agent iterative debate and consensus synthesis."""
+        """Multi-agent iterative debate and consensus synthesis with target answer extraction."""
         try:
             debate_result = await self.controller.run_full_debate(sample['question'], max_rounds=max_rounds)
             final_consensus = debate_result.get("final_consensus", {})
-            conclusion = final_consensus.get("final_conclusion") or final_consensus.get("final_answer") or ""
+            raw_conclusion = final_consensus.get("final_conclusion") or final_consensus.get("final_answer") or ""
+            
+            # Extract target format prior to scoring
+            if sample['type'] in ["math", "arithmetic"]:
+                conclusion = AnswerExtractor.extract_numeric(raw_conclusion) or raw_conclusion
+            elif sample['type'] in ["mmlu", "multiple_choice"]:
+                conclusion = AnswerExtractor.extract_option(raw_conclusion) or raw_conclusion
+            else:
+                conclusion = raw_conclusion
+
             is_correct = AnswerExtractor.is_correct(conclusion, sample['target'], sample['type'])
-            return is_correct, conclusion
+            return is_correct, str(conclusion)
         except Exception as e:
             print(f"[Error Debate] {e}")
             return False, f"Error: {e}"

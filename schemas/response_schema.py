@@ -18,7 +18,7 @@ class CritiqueSchema(BaseModel):
 class ConsensusSchema(BaseModel):
     """Schema for the final synthesized consensus output."""
     query: str = Field(..., description="The original query that was debated.")
-    reasoning: str = Field(..., description="Comprehensive reasoning synthesizing all points of agreement and disagreement across 7 rounds.")
+    reasoning: str = Field(..., description="Comprehensive reasoning synthesizing all points of agreement and disagreement across debate rounds.")
     final_answer: str = Field(..., description="Single direct consensus answer (e.g., MCQ option like 'A' or concise direct answer).")
     confidence_score: float = Field(..., description="Consensus confidence score between 0.0 and 1.0.", ge=0.0, le=1.0)
 
